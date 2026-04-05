@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>아기 심장소리 탐지기</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:#0a0a0f;color:#e8e6f0;min-height:100vh}
+.c{max-width:420px;margin:0 auto;padding:16px}
+.hdr{text-align:center;padding:12px 0 20px}
+.hdr h1{font-size:22px;font-weight:700;background:linear-gradient(135deg,#ff6b8a,#4ecdc4);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hdr p{font-size:11px;color:#6b6880;margin-top:2px}
+.warn{background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.15);border-radius:10px;padding:8px 12px;font-size:11px;color:#ff6b6b;line-height:1.5;margin-bottom:16px}
+.card{background:#12121a;border:1px solid #1e1e2e;border-radius:16px;padding:20px;text-align:center;margin-bottom:12px}
+.heart-wrap{position:relative;width:80px;height:80px;margin:0 auto 12px}
+.heart-wrap svg{width:100%;height:100%}
+.heart-wrap.beat svg{animation:hb .6s ease-in-out infinite}
+@keyframes hb{0%,100%{transform:scale(1)}15%{transform:scale(1.15)}30%{transform:scale(1)}45%{transform:scale(1.1)}}
+.pulse{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:80px;height:80px;border-radius:50%;border:2px solid #ff6b8a;opacity:0}
+.pulse.on{animation:po 1.5s ease-out infinite}
+@keyframes po{0%{width:80px;height:80px;opacity:.4}100%{width:140px;height:140px;opacity:0}}
+.slbl{font-size:18px;font-weight:700}
+.ssub{font-size:12px;color:#6b6880;margin-top:4px}
+.cbar{margin-top:12px;height:6px;background:#1e1e2e;border-radius:3px;overflow:hidden}
+.cfill{height:100%;border-radius:3px;transition:width .5s,background .5s;width:0}
+.mets{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.met{background:#12121a;border:1px solid #1e1e2e;border-radius:12px;padding:10px 6px;text-align:center}
+.mv{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums}
+.ml{font-size:9px;color:#6b6880;margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+.viz{background:#12121a;border:1px solid #1e1e2e;border-radius:16px;padding:12px;margin-bottom:12px}
+.viz h3{font-size:10px;color:#6b6880;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.bars{height:80px;display:flex;align-items:flex-end;gap:1px}
+.bar{flex:1;border-radius:2px 2px 0 0;transition:height .1s;min-width:1px}
+canvas{width:100%;height:60px}
+.inst{background:#12121a;border:1px solid #1e1e2e;border-radius:16px;padding:14px;margin-bottom:12px}
+.inst h3{font-size:13px;font-weight:700;margin-bottom:6px}
+.inst div{font-size:12px;color:#6b6880;line-height:1.8}
+.btn{width:100%;padding:16px;border:none;border-radius:14px;font-family:'DM Sans',sans-serif;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:4px;color:#fff}
+.btn-go{background:linear-gradient(135deg,#ff6b8a,#ff8fa3)}
+.btn-stop{background:#1e1e2e}
+.timer{font-size:13px;color:#6b6880;text-align:center;margin-top:4px;font-variant-numeric:tabular-nums}
+.dbg-t{font-size:11px;color:#6b6880;text-align:center;cursor:pointer;padding:8px;user-select:none;margin-top:8px}
+.dbg{background:#12121a;border:1px solid #1e1e2e;border-radius:12px;padding:10px;font-size:10px;font-family:monospace;color:#6b6880;line-height:1.6;max-height:160px;overflow-y:auto;margin-bottom:12px;display:none}
+.dbg.show{display:block}
+</style>
+</head>
+<body>
+<div class="c">
+<div class="hdr">
+<h1>아기 심장소리 탐지기</h1>
+<p>Active Doppler Sensing Prototype v0.1</p>
+</div>
+<div class="warn">⚠️ 의료기기 아님. 연구/체험 목적 프로토타입. 태아 건강은 의료진 상담 필수.</div>
+<div class="card">
+<div class="heart-wrap" id="hw">
+<div class="pulse" id="pulse"></div>
+<svg viewBox="0 0 80 80" fill="none">
+<path d="M40 68C20 52 4 36 4 24 4 14 12 6 22 6 28 6 34 10 40 18 46 10 52 6 58 6 68 6 76 14 76 24 76 36 60 52 40 68Z" fill="currentColor" id="hp" style="color:#1e1e2e"/>
+</svg>
+</div>
+<div class="slbl" id="sl">준비</div>
+<div class="ssub" id="ss">아래 버튼을 눌러 시작하세요</div>
+<div class="cbar"><div class="cfill" id="cf"></div></div>
+</div>
+<div class="mets">
+<div class="met"><div class="mv" id="m1">—</div><div class="ml">신호 강도</div></div>
+<div class="met"><div class="mv" id="m2">—</div><div class="ml">주기성</div></div>
+<div class="met"><div class="mv" id="m3">—</div><div class="ml">신뢰도</div></div>
+</div>
+<div class="viz">
+<h3>도플러 스펙트럼 (18kHz 대역)</h3>
+<div class="bars" id="bars"><div style="width:100%;text-align:center;color:#2a2a3a;font-size:12px;padding-bottom:30px">측정 시작 후 표시</div></div>
+</div>
+<div class="viz">
+<h3>Novelty Function (심박 이벤트)</h3>
+<canvas id="nc" height="60"></canvas>
+</div>
+<div class="inst" id="inst">
+<h3>사용 방법</h3>
+<div>1. 폰 케이스를 벗기세요<br>2. 조용한 환경에서 사용하세요<br>3. 폰 하단(스피커+마이크)을 복부에 밀착<br>4. 60초간 가만히 있으세요<br>5. 여러 위치를 시도해보세요</div>
+</div>
+<button class="btn btn-go" id="btn" onclick="toggle()">측정 시작</button>
+<div class="timer" id="tm"></div>
+<div class="dbg-t" onclick="document.getElementById('dbg').classList.toggle('show')">디버그 패널 ▾</div>
+<div class="dbg" id="dbg"></div>
+</div>
+<script>
+let ax=null,osc=null,an=null,ms=null,rec=false,t0=0,af=null,ti=null;
+const SR=48000,FFT=2048,TF=18000,NL=200;
+let nh=new Float32Array(NL),ps=null,fc=0,psc=[],dsc=[];
+
+function lg(m){const d=document.getElementById('dbg');const s=((Date.now()-t0)/1000).toFixed(1);d.innerHTML+=`[${s}s] ${m}\n`;d.scrollTop=d.scrollHeight}
+
+function toggle(){rec?stop():start()}
+
+async function start(){
+try{
+nh=new Float32Array(NL);ps=null;fc=0;psc=[];dsc=[];
+document.getElementById('dbg').innerHTML='';t0=Date.now();
+
+ms=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+ax=new(window.AudioContext||window.webkitAudioContext)({sampleRate:SR});
+lg('AudioContext: '+ax.sampleRate+'Hz');
+
+osc=ax.createOscillator();osc.type='sine';osc.frequency.setValueAtTime(TF,ax.currentTime);
+const g=ax.createGain();g.gain.setValueAtTime(0.8,ax.currentTime);
+osc.connect(g);g.connect(ax.destination);osc.start();
+lg('18kHz 톤 발사');
+
+const mic=ax.createMediaStreamSource(ms);
+an=ax.createAnalyser();an.fftSize=FFT;an.smoothingTimeConstant=0.3;
+mic.connect(an);
+
+const br=ax.sampleRate/FFT;
+lg('해상도: '+br.toFixed(1)+'Hz/bin, 18kHz=bin#'+Math.round(TF/br));
+
+rec=true;
+ui('rec');
+let sec=60;
+document.getElementById('tm').textContent=sec+'초 남음';
+ti=setInterval(()=>{sec--;document.getElementById('tm').textContent=sec+'초 남음';if(sec<=0)stop()},1000);
+af=requestAnimationFrame(proc);
+lg('녹음 시작');
+}catch(e){lg('에러: '+e.message);alert('마이크 권한이 필요합니다.')}}
+
+function stop(){
+rec=false;
+if(osc)try{osc.stop()}catch(e){}osc=null;
+if(ms)ms.getTracks().forEach(t=>t.stop());
+if(ax)ax.close();ax=null;an=null;
+if(af)cancelAnimationFrame(af);
+if(ti)clearInterval(ti);
+
+if(psc.length<3){ui('insuf');return}
+const sp=[...psc].sort((a,b)=>a-b),mp=sp[Math.floor(sp.length/2)];
+const sd=[...dsc].sort((a,b)=>a-b),ms2=sd[Math.floor(sd.length/2)];
+const ps2=Math.min(1,Math.max(0,mp/0.4));
+const ss=Math.min(1,Math.max(0,(ms2-3)/10));
+const conf=ps2*0.7+ss*0.3;
+let st='nd';if(conf>0.6)st='det';else if(conf>0.3)st='weak';
+lg('결과: '+st+', 신뢰도='+(conf*100).toFixed(0)+'%, 주기성='+mp.toFixed(3)+', SNR='+ms2.toFixed(1));
+ui(st,conf,mp)}
+
+function proc(){
+if(!rec||!an)return;
+const fd=new Float32Array(an.frequencyBinCount);
+an.getFloatFrequencyData(fd);
+const br=ax.sampleRate/FFT;
+const lo=Math.floor(17500/br),hi=Math.ceil(18500/br);
+const bd=fd.slice(lo,hi+1);
+
+// spectrum viz
+const dl=Math.max(0,lo-15),dh=Math.min(fd.length,hi+15);
+let bhtml='';
+for(let i=dl;i<dh;i++){
+const v=Math.max(0,(fd[i]+100)/60);
+const c=v>0.5?'rgba(78,205,196,0.7)':'rgba(78,205,196,0.2)';
+bhtml+=`<div class="bar" style="height:${Math.min(100,v*100)}%;background:${c}"></div>`}
+document.getElementById('bars').innerHTML=bhtml;
+
+// novelty
+if(ps){let nv=0;for(let i=0;i<bd.length;i++){const d=bd[i]-ps[i];if(d>0)nv+=d}
+nh.copyWithin(0,1);nh[NL-1]=nv}
+ps=new Float32Array(bd);fc++;
+
+// draw novelty
+if(fc%3===0){
+const cv=document.getElementById('nc');const cx=cv.getContext('2d');
+const w=cv.width=cv.offsetWidth*2;const h=cv.height=120;
+cx.fillStyle='#12121a';cx.fillRect(0,0,w,h);
+let mx=0.001;for(let i=0;i<NL;i++)if(nh[i]>mx)mx=nh[i];
+cx.beginPath();cx.strokeStyle='#ff6b8a';cx.lineWidth=2;
+for(let i=0;i<NL;i++){const x=(i/NL)*w;const y=h-((nh[i]/mx)*h*0.85)-5;
+if(i===0)cx.moveTo(x,y);else cx.lineTo(x,y)}
+cx.stroke();cx.lineTo(w,h);cx.lineTo(0,h);cx.closePath();
+cx.fillStyle='rgba(255,107,138,0.08)';cx.fill()}
+
+// periodicity
+if(fc%15===0&&fc>60){
+const p=acorr(nh);psc.push(p);
+const be=bd.reduce((s,v)=>s+Math.pow(10,v/10),0);
+const nr=fd.slice(0,Math.max(1,lo-50));
+const nf=nr.reduce((s,v)=>s+Math.pow(10,v/10),0)/(nr.length||1);
+const snr=10*Math.log10(be/(nf*bd.length+1e-10));dsc.push(snr);
+
+const el=id=>document.getElementById(id);
+el('m1').textContent=snr.toFixed(1);el('m1').style.color=snr>5?'#4ecdc4':snr>0?'#ffd93d':'#6b6880';
+el('m2').textContent=p.toFixed(3);el('m2').style.color=p>0.15?'#4ecdc4':p>0.05?'#ffd93d':'#6b6880';
+const cf=Math.min(100,Math.max(0,(p/0.4)*70+((snr-3)/10)*30));
+el('m3').textContent=cf.toFixed(0)+'%';
+const cfl=document.getElementById('cf');
+cfl.style.width=cf+'%';cfl.style.background=cf>60?'#4ecdc4':cf>30?'#ffd93d':'#ff6b6b';
+if(p>0.15){document.getElementById('hw').classList.add('beat');document.getElementById('hp').style.color='#ff6b8a';document.getElementById('pulse').classList.add('on')}
+else{document.getElementById('hw').classList.remove('beat');document.getElementById('hp').style.color='#1e1e2e';document.getElementById('pulse').classList.remove('on')}}
+
+af=requestAnimationFrame(proc)}
+
+function acorr(sig){
+const fps=60,minL=Math.floor(fps/2.8),maxL=Math.ceil(fps/1.8);
+const len=sig.length;let mean=0;for(let i=0;i<len;i++)mean+=sig[i];mean/=len;
+let vr=0;for(let i=0;i<len;i++)vr+=(sig[i]-mean)**2;vr/=len;
+if(vr<1e-10)return 0;
+let mc=-1;
+for(let lag=minL;lag<=maxL;lag++){
+let cr=0,ct=0;for(let i=0;i<len-lag;i++){cr+=(sig[i]-mean)*(sig[i+lag]-mean);ct++}
+cr=cr/(ct*vr);if(cr>mc)mc=cr}
+return Math.max(0,mc)}
+
+function ui(s,conf,per){
+const b=document.getElementById('btn'),sl=document.getElementById('sl'),ss=document.getElementById('ss');
+const hp=document.getElementById('hp'),hw=document.getElementById('hw'),pu=document.getElementById('pulse');
+document.getElementById('tm').textContent='';
+switch(s){
+case'rec':b.textContent='측정 중지';b.className='btn btn-stop';sl.textContent='측정 중...';sl.style.color='';
+ss.textContent='폰을 밀착한 채로 가만히 계세요';document.getElementById('inst').style.display='none';break;
+case'det':b.textContent='다시 측정';b.className='btn btn-go';sl.textContent='💚 신호 감지됨';sl.style.color='#4ecdc4';
+ss.textContent='신뢰도: '+(conf*100).toFixed(0)+'%';hp.style.color='#4ecdc4';hw.classList.add('beat');pu.classList.add('on');
+document.getElementById('cf').style.width=(conf*100)+'%';document.getElementById('cf').style.background='#4ecdc4';break;
+case'weak':b.textContent='다시 측정';b.className='btn btn-go';sl.textContent='💛 약한 신호';sl.style.color='#ffd93d';
+ss.textContent='위치를 조정하고 다시 시도해보세요';hp.style.color='#ffd93d';hw.classList.remove('beat');pu.classList.remove('on');
+document.getElementById('cf').style.width=(conf*100)+'%';document.getElementById('cf').style.background='#ffd93d';break;
+case'nd':b.textContent='다시 측정';b.className='btn btn-go';sl.textContent='감지되지 않음';sl.style.color='#6b6880';
+ss.textContent='케이스 벗기고 위치 변경 후 재시도';hp.style.color='#1e1e2e';hw.classList.remove('beat');pu.classList.remove('on');
+document.getElementById('cf').style.width='0';break;
+case'insuf':b.textContent='다시 측정';b.className='btn btn-go';sl.textContent='데이터 부족';sl.style.color='#6b6880';
+ss.textContent='60초간 측정해주세요';break}}
+</script>
+</body>
+</html>
